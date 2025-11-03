@@ -125,8 +125,8 @@ const App = () => {
               return (
                 <li
                   key={item.id}
-                  className={`bg-white border rounded-lg p-4 shadow-sm ${
-                    item.completed ? "bg-green-200" : ""
+                  className={`border rounded-lg p-4 shadow-sm ${
+                    item.completed ? "bg-green-200" : "bg-white"
                   }`}
                 >
                   <h1
