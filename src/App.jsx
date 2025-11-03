@@ -99,7 +99,7 @@ const App = () => {
               onClick={() => setFilter("all")}
               className={`px-4 py-1 rounded ${isActive("all")}`}
             >
-              All Task {task && task.length}
+              All Task {task.length > 0 && task.length}
             </button>
             <button
               onClick={() => setFilter("pending")}
@@ -111,7 +111,7 @@ const App = () => {
               onClick={() => setFilter("completed")}
               className={`px-4 py-1 border rounded ${isActive("completed")}`}
             >
-              Completed {task && task.filter((item) => item.completed).length}
+              Completed {task.length > 0 && task.filter((item) => item.completed).length}
             </button>
           </div>
 
