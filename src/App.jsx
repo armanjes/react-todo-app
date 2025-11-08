@@ -1,5 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { IconCircleCheck, IconEdit, IconTrash } from "@tabler/icons-react";
+
+// const getInitialTask = () => {
+//   const savedTask = localStorage.getItem("todo-task");
+//   if (!savedTask || savedTask === "undefined") return [];
+
+//   try {
+//     return JSON.parse(savedTask);
+//   } catch (e) {
+//     console.error("Invalid JSON in localStorage:", e);
+//     return [];
+//   }
+// };
 
 const getInitialTask = () => {
   const savedTask = localStorage.getItem("todo-task");
@@ -10,11 +22,30 @@ const capitalize = (title) => {
   return title.charAt(0).toUpperCase() + title.slice(1);
 };
 
+const taskReducer = (state, action) => {
+  const { type, payload } = action;
+  switch (type) {
+    case "add":
+      return [...state, { title: payload, completed: false, id: Date.now() }];
+    case "delete":
+      return state.filter((t) => t.id !== payload);
+    case "complete":
+      return state.map((t) =>
+        t.id === payload ? { ...t, completed: !t.completed } : t
+      );
+    case "edit":
+      return state.map((t) =>
+        t.id === payload.id ? { ...t, completed: !t.completed } : t
+      );
+    default:
+      return state;
+  }
+};
+
 const App = () => {
   const [input, setInput] = useState("");
-  const [task, setTask] = useState(getInitialTask());
-  const [editingId, setEditingId] = useState(null);
-  const [filter, setFilter] = useState("all");
+  const [editingID, setEditingID] = useState(null);
+  const [task, dispatch] = useReducer(taskReducer, getInitialTask);
 
   useEffect(() => {
     localStorage.setItem("todo-task", JSON.stringify(task));
@@ -24,55 +55,14 @@ const App = () => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    if (editingId) {
-      setTask((prev) => {
-        return prev.map((item) =>
-          item.id === editingId ? { ...item, title: input } : item
-        );
-      });
-      setEditingId(null);
+    if (editingID) {
+      dispatch({ type: "edit", payload: { id: editingID, title: input } });
+      setEditingID(null);
     } else {
-      setTask([
-        ...task,
-        {
-          id: Date.now(),
-          completed: false,
-          title: input,
-        },
-      ]);
-    }
-    setInput("");
-  };
-
-  const deleteTask = (id) => {
-    setTask(task.filter((item) => item.id !== id));
-  };
-
-  const editTask = (id) => {
-    const itemToEdit = task.find((item) => item.id === id);
-
-    if (itemToEdit) {
-      setInput(itemToEdit.title);
-      setEditingId(id);
+      dispatch({ type: "add", payload: input });
+      setInput("");
     }
   };
-
-  const completeTask = (id) => {
-    setTask(
-      task.map((item) =>
-        item.id === id ? { ...item, completed: !item.completed } : item
-      )
-    );
-  };
-
-  const filteredTask = task.filter((item) => {
-    if (filter === "pending") return !item.completed;
-    if (filter === "completed") return item.completed;
-    return true;
-  });
-
-  const isActive = (type) =>
-    filter === type ? "bg-blue-600 text-white" : "border";
 
   return (
     <div className="w-[95%] md:w-[60%] my-12 mx-auto">
@@ -94,39 +84,18 @@ const App = () => {
         </form>
 
         <ul className="flex flex-col gap-4">
-          <div className="space-x-2">
-            <button
-              onClick={() => setFilter("all")}
-              className={`px-4 py-1 rounded ${isActive("all")}`}
-            >
-              All Task {task.length}
-            </button>
-            <button
-              onClick={() => setFilter("pending")}
-              className={`px-4 py-1 border rounded ${isActive("pending")}`}
-            >
-              Pending {task.filter((item) => !item.completed).length}
-            </button>
-            <button
-              onClick={() => setFilter("completed")}
-              className={`px-4 py-1 border rounded ${isActive("completed")}`}
-            >
-              Completed {task.filter((item) => item.completed).length}
-            </button>
-          </div>
-
           {/* render task */}
-          {!filteredTask.length ? (
+          {!task.length ? (
             <p className="mt-16 text-center text-slate-400 text-lg">
               No tasks.
             </p>
           ) : (
-            filteredTask.map((item) => {
+            task.map((item) => {
               return (
                 <li
                   key={item.id}
-                  className={`bg-white border rounded-lg p-4 shadow-sm ${
-                    item.completed ? "bg-green-200" : ""
+                  className={`border rounded-lg p-4 shadow-sm ${
+                    item.completed ? "bg-green-100" : "bg-white"
                   }`}
                 >
                   <h1
@@ -137,13 +106,26 @@ const App = () => {
                     {capitalize(item.title)}
                   </h1>
                   <div className="flex gap-3 mt-4 justify-end">
-                    <button onClick={() => deleteTask(item.id)}>
+                    <button
+                      onClick={() =>
+                        dispatch({ type: "delete", payload: item.id })
+                      }
+                    >
                       <IconTrash stroke={2} className="text-red-500" />
                     </button>
-                    <button onClick={() => editTask(item.id)}>
+                    <button
+                      onClick={() => {
+                        setInput(item.title);
+                        setEditingID(item.id);
+                      }}
+                    >
                       <IconEdit stroke={2} className="text-orange-500" />
                     </button>
-                    <button onClick={() => completeTask(item.id)}>
+                    <button
+                      onClick={() =>
+                        dispatch({ type: "complete", payload: item.id })
+                      }
+                    >
                       <IconCircleCheck stroke={2} className="text-green-600" />
                     </button>
                   </div>
@@ -157,6 +139,3 @@ const App = () => {
   );
 };
 export default App;
-
-// asynchronous nature of React's state updates
-// function execution context
