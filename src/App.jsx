@@ -1,62 +1,62 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { IconCircleCheck, IconEdit, IconTrash } from "@tabler/icons-react";
 
-const getInitialTask = () => {
-  const savedTask = localStorage.getItem("todo-task");
-  if (!savedTask || savedTask === "undefined") return [];
+const capitalize = (title) => title.charAt(0).toUpperCase() + title.slice(1);
 
-  try {
-    return JSON.parse(savedTask);
-  } catch (e) {
-    console.error("Invalid JSON in localStorage:", e);
-    return [];
-  }
+const getSavedTodo = () => {
+  const savedTodo = localStorage.getItem("todo");
+  return !savedTodo || savedTodo !== "undefined" ? JSON.parse(savedTodo) : [];
 };
 
-const capitalize = (title) => {
-  return title.charAt(0).toUpperCase() + title.slice(1);
-};
-
-const taskReducer = (state, action) => {
+function taskReducer(state, action) {
   const { type, payload } = action;
+
   switch (type) {
     case "add":
-      return [...state, { title: payload, completed: false, id: Date.now() }];
-    case "delete":
-      return state.filter((t) => t.id !== payload);
-    case "complete":
-      return state.map((t) =>
-        t.id === payload ? { ...t, completed: !t.completed } : t
-      );
+      return [
+        ...state,
+        { id: Date.now(), isCompleted: false, title: payload.title },
+      ];
+
     case "edit":
       return state.map((t) =>
         t.id === payload.id ? { ...t, title: payload.title } : t
       );
+
+    case "delete":
+      return state.filter((t) => t.id !== payload.id);
+
+    case "complete":
+      return state.map((t) =>
+        t.id === payload.id ? { ...t, isCompleted: !t.isCompleted } : t
+      );
+
     default:
       return state;
   }
-};
+}
 
 const App = () => {
-  const [input, setInput] = useState("");
-  const [editingID, setEditingID] = useState(null);
-  const [task, dispatch] = useReducer(taskReducer, [], getInitialTask);
+  const inputRef = useRef("")
+  const [editingId, setEditingId] = useState(null);
+  const [task, dispatch] = useReducer(taskReducer, [], getSavedTodo);
 
   useEffect(() => {
-    localStorage.setItem("todo-task", JSON.stringify(task));
+    localStorage.setItem("todo", JSON.stringify(task));
   }, [task]);
 
   const addTask = (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    const value = inputRef.current.value.trim();
+    if (!value) return;
 
-    if (editingID) {
-      dispatch({ type: "edit", payload: { id: editingID, title: input } });
-      setEditingID(null);
+    if (editingId) {
+      dispatch({ type: "edit", payload: { id: editingId, title: value } });
+      setEditingId(null);
     } else {
-      dispatch({ type: "add", payload: input });
+      dispatch({ type: "add", payload: { title: value } });
     }
-    setInput("");
+    inputRef.current.value = ""
   };
 
   return (
@@ -64,15 +64,14 @@ const App = () => {
       <div className="space-y-4">
         <form className="flex items-center gap-2 md:gap-4" onSubmit={addTask}>
           <input
+            ref={inputRef}
             type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
             placeholder="Add a task..."
-            className="flex-grow p-3 border border-gray-300 rounded-lg shadow-sm"
+            className="flex-grow p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-1 focus:outline-blue-500"
           />
           <button
             type="submit"
-            className="p-3 bg-blue-600 text-white font-semibold rounded-lg transition duration-150 ease-in-out"
+            className="p-3 bg-blue-500 text-white font-semibold rounded-lg hover:bg-blue-600 transition duration-150 ease-in-out"
           >
             Add Task
           </button>
@@ -85,48 +84,51 @@ const App = () => {
               No tasks.
             </p>
           ) : (
-            task.map((item) => {
-              return (
-                <li
-                  key={item.id}
-                  className={`border rounded-lg p-4 shadow-sm ${
-                    item.completed ? "bg-green-100" : "bg-white"
+            task.map((t) => (
+              <li
+                key={t.id}
+                className={`border rounded-lg p-4 shadow-sm ${
+                  t.isCompleted ? "bg-green-200" : "bg-white"
+                }`}
+              >
+                <h1
+                  className={`text-3xl font-semibold ${
+                    t.isCompleted ? "line-through" : ""
                   }`}
                 >
-                  <h1
-                    className={`text-3xl font-semibold ${
-                      item.completed ? "line-through" : ""
-                    }`}
+                  {capitalize(t.title)}
+                </h1>
+                {/* buttons */}
+                <div className="flex items-center justify-end gap-3 mt-4">
+                  <button
+                    onClick={() =>
+                      dispatch({ type: "delete", payload: { id: t.id } })
+                    }
+                    className="text-red-500"
                   >
-                    {capitalize(item.title)}
-                  </h1>
-                  <div className="flex gap-3 mt-4 justify-end">
-                    <button
-                      onClick={() =>
-                        dispatch({ type: "delete", payload: item.id })
-                      }
-                    >
-                      <IconTrash stroke={2} className="text-red-500" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setInput(item.title);
-                        setEditingID(item.id);
-                      }}
-                    >
-                      <IconEdit stroke={2} className="text-orange-500" />
-                    </button>
-                    <button
-                      onClick={() =>
-                        dispatch({ type: "complete", payload: item.id })
-                      }
-                    >
-                      <IconCircleCheck stroke={2} className="text-green-600" />
-                    </button>
-                  </div>
-                </li>
-              );
-            })
+                    <IconTrash />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingId(t.id);
+                      inputRef.current.value = t.title
+                      inputRef.current.focus()
+                    }}
+                    className="text-amber-500"
+                  >
+                    <IconEdit />
+                  </button>
+                  <button
+                    onClick={() =>
+                      dispatch({ type: "complete", payload: { id: t.id } })
+                    }
+                    className="text-green-500"
+                  >
+                    <IconCircleCheck />
+                  </button>
+                </div>
+              </li>
+            ))
           )}
         </ul>
       </div>
