@@ -1,21 +1,16 @@
 import { useEffect, useReducer, useState } from "react";
 import { IconCircleCheck, IconEdit, IconTrash } from "@tabler/icons-react";
 
-// const getInitialTask = () => {
-//   const savedTask = localStorage.getItem("todo-task");
-//   if (!savedTask || savedTask === "undefined") return [];
-
-//   try {
-//     return JSON.parse(savedTask);
-//   } catch (e) {
-//     console.error("Invalid JSON in localStorage:", e);
-//     return [];
-//   }
-// };
-
 const getInitialTask = () => {
   const savedTask = localStorage.getItem("todo-task");
-  return savedTask ? JSON.parse(savedTask) : [];
+  if (!savedTask || savedTask === "undefined") return [];
+
+  try {
+    return JSON.parse(savedTask);
+  } catch (e) {
+    console.error("Invalid JSON in localStorage:", e);
+    return [];
+  }
 };
 
 const capitalize = (title) => {
@@ -35,7 +30,7 @@ const taskReducer = (state, action) => {
       );
     case "edit":
       return state.map((t) =>
-        t.id === payload.id ? { ...t, completed: !t.completed } : t
+        t.id === payload.id ? { ...t, title: payload.title } : t
       );
     default:
       return state;
@@ -45,7 +40,7 @@ const taskReducer = (state, action) => {
 const App = () => {
   const [input, setInput] = useState("");
   const [editingID, setEditingID] = useState(null);
-  const [task, dispatch] = useReducer(taskReducer, getInitialTask);
+  const [task, dispatch] = useReducer(taskReducer, [], getInitialTask);
 
   useEffect(() => {
     localStorage.setItem("todo-task", JSON.stringify(task));
@@ -60,8 +55,8 @@ const App = () => {
       setEditingID(null);
     } else {
       dispatch({ type: "add", payload: input });
-      setInput("");
     }
+    setInput("");
   };
 
   return (
